@@ -1,0 +1,153 @@
+.video-card {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.video-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--bg-primary);
+}
+
+/* Double tap heart */
+.double-tap-heart {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  animation: heartBurst 0.8s ease-out forwards;
+  pointer-events: none;
+}
+
+/* Right sidebar */
+.video-sidebar {
+  position: absolute;
+  right: 12px;
+  bottom: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  z-index: 10;
+}
+
+.sidebar-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid white;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+}
+
+.sidebar-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-follow-btn {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 20px;
+  background: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.sidebar-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.sidebar-btn span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sidebar-btn.liked svg {
+  animation: pulse 0.3s ease;
+}
+
+/* Music disc */
+.sidebar-disc {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 8px solid #333;
+  animation-duration: 4s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: paused;
+}
+
+.sidebar-disc.spinning {
+  animation-name: spin;
+  animation-play-state: running;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.sidebar-disc img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Bottom info */
+.video-info {
+  position: absolute;
+  left: 16px;
+  right: 80px;
+  bottom: 80px;
+  z-index: 10;
+}
+
+.video-author {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.video-desc {
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 10px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.video-music {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.music-marquee {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 200px;
+}

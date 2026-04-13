@@ -1,0 +1,67 @@
+.feed-page {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.feed-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 0;
+  padding-top: calc(var(--safe-area-top) + 12px);
+}
+
+.feed-tab {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.feed-tab.active {
+  color: var(--text-primary);
+}
+
+.feed-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 3px;
+  background: var(--text-primary);
+  border-radius: 2px;
+}
+
+.feed-tab-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--text-tertiary);
+  opacity: 0.3;
+}
+
+.feed-swiper {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.feed-track {
+  width: 100%;
+  height: 100%;
+}
