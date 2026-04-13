@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
-import api from "./services/api";
 import MainLayout from "./components/Layout/MainLayout";
+import DebugPanel from "./components/Debug/DebugPanel";
 import Feed from "./pages/Feed";
 import Discover from "./pages/Discover";
 import Upload from "./pages/Upload";
@@ -12,29 +12,37 @@ import VideoDetail from "./pages/VideoDetail";
 import Live from "./pages/Live";
 import Chat from "./pages/Chat";
 import Login from "./pages/Login";
-import DebugPanel from "./components/Debug/DebugPanel";
+import api from "./services/api";
 
 function App() {
-  const isDebug = useAuthStore((s) => s.debugMode);
-  const restoreSession = useAuthStore((s) => s.restoreSession);
+  const { debugMode, restoreSession, token } = useAuthStore();
 
+  // Restore session & custom API URL on mount
   useEffect(() => {
-    // Setup axios interceptor: attach token to every request
-    const interceptor = api.interceptors.request.use((config) => {
-      const token = localStorage.getItem("doutok_token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    });
+    // Restore custom API base URL from localStorage
+    const savedUrl = localStorage.getItem("doutok_api_url");
+    if (savedUrl) {
+      api.defaults.baseURL = savedUrl.endsWith("/api/v1")
+        ? savedUrl
+        : `${savedUrl}/api/v1`;
+    }
 
-    // Restore session from localStorage
+    // Set auth header if token exists
+    if (token) {
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    }
+
     restoreSession();
-
-    return () => {
-      api.interceptors.request.eject(interceptor);
-    };
   }, []);
+
+  // Keep auth header in sync
+  useEffect(() => {
+    if (token) {
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete api.defaults.headers.common["Authorization"];
+    }
+  }, [token]);
 
   return (
     <div className="app-container">
@@ -52,7 +60,7 @@ function App() {
         <Route path="/live/:id" element={<Live />} />
         <Route path="/chat/:id" element={<Chat />} />
       </Routes>
-      {isDebug && <DebugPanel />}
+      {debugMode && <DebugPanel />}
     </div>
   );
 }

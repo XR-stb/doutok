@@ -1,0 +1,106 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  # ---- Backend: build ----
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: backend/go.sum
+
+      - name: Build backend
+        run: |
+          cd backend
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o ../dist/gateway ./cmd/gateway
+
+      - name: Upload backend binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway-linux-amd64
+          path: dist/gateway
+
+  # ---- Frontend: build web + APK ----
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: cd frontend && npm ci
+
+      - name: Build web
+        run: cd frontend && npm run build
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Add Android platform & build APK
+        run: |
+          cd frontend
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: doutok-debug-apk
+          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+
+  # ---- Auto Release on main push ----
+  release:
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: doutok-debug-apk
+          path: ./apk
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: gateway-linux-amd64
+          path: ./backend
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(echo ${GITHUB_SHA} | cut -c1-7)" >> ${GITHUB_OUTPUT}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "build-${{ steps.sha.outputs.short }}"
+          name: "Build ${{ steps.sha.outputs.short }}"
+          body: "Auto-build from commit ${{ github.sha }}"
+          files: |
+            apk/app-debug.apk
+            backend/gateway

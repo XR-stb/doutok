@@ -39,10 +39,10 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token: null,
+  token: localStorage.getItem("doutok_token"),
   user: null,
   isLoggedIn: false,
-  debugMode: false,
+  debugMode: localStorage.getItem("doutok_debug") === "true",
   debugTapCount: 0,
   loading: false,
   error: null,
@@ -50,8 +50,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (username, password) => {
     set({ loading: true, error: null });
     try {
-      // api interceptor already unwraps axios .data
-      // so res = { code, msg, data: { user_id, username, nickname, avatar, token } }
       const res: any = await authAPI.login({ username, password });
       if (res.code !== 0) {
         set({ loading: false, error: res.msg || "Login failed" });
@@ -123,7 +121,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const d = res.data;
         set({
           user: {
-            id: d.id || d.user_id,
+            id: d.id,
             username: d.username,
             nickname: d.nickname,
             avatar: d.avatar || "",
@@ -133,46 +131,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             like_count: d.like_count || 0,
             video_count: d.video_count || 0,
           },
+          isLoggedIn: true,
         });
       }
     } catch {
-      get().logout();
+      // Token invalid
+      localStorage.removeItem("doutok_token");
+      set({ token: null, user: null, isLoggedIn: false });
     }
   },
 
   updateProfile: async (data) => {
     try {
       const res: any = await userAPI.updateMe(data);
-      if (res.code === 0 && res.data) {
-        const d = res.data;
-        set({
-          user: {
-            id: d.id || d.user_id,
-            username: d.username,
-            nickname: d.nickname,
-            avatar: d.avatar || "",
-            bio: d.bio || "",
-            follow_count: d.follow_count || 0,
-            fan_count: d.fan_count || 0,
-            like_count: d.like_count || 0,
-            video_count: d.video_count || 0,
-          },
-        });
+      if (res.code === 0) {
+        const { user } = get();
+        if (user) {
+          set({ user: { ...user, ...data } });
+        }
       }
-    } catch (err: any) {
-      const msg = err?.msg || "Update failed";
-      set({ error: msg });
+    } catch {
+      // ignore
     }
   },
 
   tapDebug: () => {
-    const count = get().debugTapCount + 1;
-    if (count >= 7) {
-      set({ debugMode: !get().debugMode, debugTapCount: 0 });
+    const { debugTapCount } = get();
+    const next = debugTapCount + 1;
+    if (next >= 7) {
+      const newMode = !get().debugMode;
+      localStorage.setItem("doutok_debug", String(newMode));
+      set({ debugMode: newMode, debugTapCount: 0 });
     } else {
-      set({ debugTapCount: count });
+      set({ debugTapCount: next });
+      // Reset tap counter after 3 seconds of inactivity
       setTimeout(() => {
-        if (get().debugTapCount === count) {
+        if (get().debugTapCount === next) {
           set({ debugTapCount: 0 });
         }
       }, 3000);
@@ -184,29 +178,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   restoreSession: async () => {
     const token = localStorage.getItem("doutok_token");
     if (token) {
-      set({ token, isLoggedIn: true });
-      try {
-        const res: any = await userAPI.getMe();
-        if (res.code === 0 && res.data) {
-          const d = res.data;
-          set({
-            user: {
-              id: d.id || d.user_id,
-              username: d.username,
-              nickname: d.nickname,
-              avatar: d.avatar || "",
-              bio: d.bio || "",
-              follow_count: d.follow_count || 0,
-              fan_count: d.fan_count || 0,
-              like_count: d.like_count || 0,
-              video_count: d.video_count || 0,
-            },
-          });
-        }
-      } catch {
-        localStorage.removeItem("doutok_token");
-        set({ token: null, isLoggedIn: false });
-      }
+      set({ token });
+      await get().fetchMe();
     }
   },
 }));

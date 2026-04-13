@@ -1,7 +1,16 @@
 import axios from "axios";
+import type { AxiosRequestConfig } from "axios";
+
+// Restore custom API URL if previously set in Debug panel
+const savedBaseUrl = localStorage.getItem("doutok_api_url");
+const baseURL = savedBaseUrl
+  ? savedBaseUrl.endsWith("/api/v1")
+    ? savedBaseUrl
+    : `${savedBaseUrl}/api/v1`
+  : "/api/v1";
 
 const api = axios.create({
-  baseURL: "/api/v1",
+  baseURL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -47,10 +56,11 @@ export const feedAPI = {
 // === Video ===
 export const videoAPI = {
   getVideo: (id: number) => api.get(`/videos/${id}`),
-  upload: (formData: FormData) =>
+  upload: (formData: FormData, config?: AxiosRequestConfig) =>
     api.post("/videos", formData, {
       headers: { "Content-Type": "multipart/form-data" },
-      timeout: 120000,
+      timeout: 300000, // 5 min for large uploads
+      ...config,
     }),
   delete: (id: number) => api.delete(`/videos/${id}`),
   like: (id: number) => api.post(`/videos/${id}/like`),

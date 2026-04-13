@@ -59,9 +59,20 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
+  touch-action: none;
 }
 
 .feed-track {
   width: 100%;
-  height: 100%;
+  /* Track height = N * 100% of container, but we use translateY to position */
+  will-change: transform;
+}
+
+.feed-slide {
+  width: 100%;
+  height: 100vh;
+  /* KEY FIX: use viewport height not percentage to prevent cumulative layout drift */
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
 }

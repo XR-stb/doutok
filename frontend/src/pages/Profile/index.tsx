@@ -27,6 +27,14 @@ export default function Profile() {
     }
   }, [isLoggedIn]);
 
+  // Shared version / debug entry point (always visible)
+  const VersionFooter = () => (
+    <div className="profile-version" onClick={tapDebug}>
+      DouTok v0.1.0{debugTapCount > 0 && debugTapCount < 7 ? ` (${debugTapCount}/7)` : ""}
+      {debugMode && " [DEBUG]"}
+    </div>
+  );
+
   if (!isLoggedIn) {
     return (
       <div className="profile-guest">
@@ -37,6 +45,7 @@ export default function Profile() {
         <button className="profile-login-btn" onClick={() => navigate("/login")}>
           Log In / Sign Up
         </button>
+        <VersionFooter />
       </div>
     );
   }
@@ -146,10 +155,7 @@ export default function Profile() {
       </div>
 
       {/* Version - Debug Entry */}
-      <div className="profile-version" onClick={tapDebug}>
-        DouTok v0.1.0{debugTapCount > 0 && debugTapCount < 7 ? ` (${debugTapCount}/7)` : ""}
-        {debugMode && " [DEBUG]"}
-      </div>
+      <VersionFooter />
 
       {/* Settings Drawer */}
       {showSettings && (
