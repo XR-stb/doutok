@@ -15,6 +15,7 @@ import (
 	"github.com/xiaoran/doutok/internal/pkg/logger"
 	"github.com/xiaoran/doutok/internal/pkg/snowflake"
 	"github.com/xiaoran/doutok/internal/repository"
+	"github.com/xiaoran/doutok/internal/storage"
 )
 
 func main() {
@@ -45,6 +46,13 @@ func main() {
 	if err := cache.InitRedis(cfg.Redis); err != nil {
 		logger.Error("Failed to init Redis", "err", err)
 		logger.Info("Running WITHOUT Redis - some features disabled")
+	}
+
+
+	// 初始化 MinIO 对象存储
+	if err := storage.Init(cfg.MinIO); err != nil {
+		logger.Error("Failed to init MinIO", "err", err)
+		logger.Info("Running WITHOUT MinIO - upload disabled")
 	}
 
 	// 设置路由

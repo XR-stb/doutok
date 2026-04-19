@@ -1,32 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useFeedStore } from "../../stores/feedStore";
-import type { Video } from "../../stores/feedStore";
 import VideoCard from "../../components/VideoPlayer/VideoCard";
+import { feedAPI } from "../../services/api";
 import "./Feed.css";
 
-// Mock data for development
-const mockVideos: Video[] = Array.from({ length: 20 }, (_, i) => ({
-  id: i + 1,
-  author_id: i + 100,
-  author: {
-    id: i + 100,
-    nickname: `creator_${i + 1}`,
-    avatar: `https://picsum.photos/seed/avatar${i}/100/100`,
-  },
-  title: `Video ${i + 1}`,
-  description: `This is video #${i + 1} description #douyin #test ${i % 2 === 0 ? "#trending" : "#daily"}`,
-  cover_url: `https://picsum.photos/seed/cover${i}/720/1280`,
-  play_url: "",
-  duration: 15 + i * 3,
-  like_count: Math.floor(Math.random() * 100000),
-  comment_count: Math.floor(Math.random() * 5000),
-  share_count: Math.floor(Math.random() * 2000),
-  is_liked: false,
-  is_following: false,
-}));
-
 export default function Feed() {
-  const { videos, currentIndex, setVideos, setCurrentIndex } = useFeedStore();
+  const { videos, currentIndex, setVideos, setCurrentIndex, appendVideos } = useFeedStore();
   const [activeTab, setActiveTab] = useState<"following" | "recommend">("recommend");
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
@@ -37,9 +16,20 @@ export default function Feed() {
 
   useEffect(() => {
     if (videos.length === 0) {
-      setVideos(mockVideos);
+      loadFeed();
     }
   }, []);
+
+  const loadFeed = async () => {
+    try {
+      const res: any = await feedAPI.getFeed({ count: 10 });
+      if (res.code === 0 && res.data?.videos?.length > 0) {
+        setVideos(res.data.videos);
+      }
+    } catch {
+      // API not available - show empty state
+    }
+  };
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (isTransitioning) return;
@@ -52,14 +42,12 @@ export default function Feed() {
     if (!isDragging.current || isTransitioning) return;
     deltaY.current = e.touches[0].clientY - startY.current;
 
-    // Clamp: don't drag beyond first/last
     if (currentIndex === 0 && deltaY.current > 0) {
-      deltaY.current = deltaY.current * 0.3; // rubber band
+      deltaY.current = deltaY.current * 0.3;
     }
     if (currentIndex === videos.length - 1 && deltaY.current < 0) {
       deltaY.current = deltaY.current * 0.3;
     }
-
     setDragOffset(deltaY.current);
   }, [currentIndex, videos.length, isTransitioning]);
 
@@ -76,16 +64,13 @@ export default function Feed() {
     } else if (deltaY.current > threshold && currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     }
-
-    // Reset transition lock
     setTimeout(() => setIsTransitioning(false), 400);
   }, [currentIndex, videos.length]);
 
-  // Mouse wheel support for desktop
   const wheelTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (isTransitioning) return;
-    if (wheelTimeout.current) return; // debounce
+    if (wheelTimeout.current) return;
 
     wheelTimeout.current = setTimeout(() => {
       wheelTimeout.current = null;
@@ -102,26 +87,30 @@ export default function Feed() {
     }
   }, [currentIndex, videos.length, isTransitioning]);
 
+  if (videos.length === 0) {
+    return (
+      <div className="feed-page">
+        <div className="feed-header safe-top">
+          <button className={`feed-tab ${activeTab === "following" ? "active" : ""}`} onClick={() => setActiveTab("following")}>关注</button>
+          <div className="feed-tab-divider" />
+          <button className={`feed-tab ${activeTab === "recommend" ? "active" : ""}`} onClick={() => setActiveTab("recommend")}>推荐</button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "rgba(255,255,255,0.4)", flexDirection: "column", gap: 12 }}>
+          <p style={{ fontSize: 16 }}>No videos yet</p>
+          <p style={{ fontSize: 13, opacity: 0.6 }}>Upload your first video!</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="feed-page">
-      {/* Top tabs */}
       <div className="feed-header safe-top">
-        <button
-          className={`feed-tab ${activeTab === "following" ? "active" : ""}`}
-          onClick={() => setActiveTab("following")}
-        >
-          关注
-        </button>
+        <button className={`feed-tab ${activeTab === "following" ? "active" : ""}`} onClick={() => setActiveTab("following")}>关注</button>
         <div className="feed-tab-divider" />
-        <button
-          className={`feed-tab ${activeTab === "recommend" ? "active" : ""}`}
-          onClick={() => setActiveTab("recommend")}
-        >
-          推荐
-        </button>
+        <button className={`feed-tab ${activeTab === "recommend" ? "active" : ""}`} onClick={() => setActiveTab("recommend")}>推荐</button>
       </div>
 
-      {/* Video swiper - only render 3 videos: prev, current, next */}
       <div
         ref={containerRef}
         className="feed-swiper"
@@ -138,7 +127,6 @@ export default function Feed() {
           }}
         >
           {videos.map((video, index) => {
-            // Only render ±2 from current for performance
             if (Math.abs(index - currentIndex) > 2) {
               return <div key={video.id} className="feed-slide" />;
             }

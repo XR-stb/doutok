@@ -59,7 +59,7 @@ export default function VideoCard({ video, isActive }: Props) {
       <div className="video-sidebar">
         {/* Avatar */}
         <div className="sidebar-avatar" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${video.author_id}`); }}>
-          <img src={video.author.avatar} alt="" />
+          <img src={video.author?.avatar} alt="" />
           {!video.is_following && (
             <div className="avatar-follow-btn">
               <Plus size={12} />
@@ -94,17 +94,17 @@ export default function VideoCard({ video, isActive }: Props) {
 
         {/* Music disc */}
         <div className={`sidebar-disc ${isActive ? "spinning" : ""}`}>
-          <img src={video.author.avatar} alt="" />
+          <img src={video.author?.avatar} alt="" />
         </div>
       </div>
 
       {/* Bottom info */}
       <div className="video-info">
-        <div className="video-author">@{video.author.nickname}</div>
+        <div className="video-author">@{video.author?.nickname}</div>
         <div className="video-desc ellipsis-2">{video.description}</div>
         <div className="video-music">
           <Music size={14} />
-          <span className="music-marquee">原声 - {video.author.nickname}</span>
+          <span className="music-marquee">原声 - {video.author?.nickname}</span>
         </div>
       </div>
     </div>

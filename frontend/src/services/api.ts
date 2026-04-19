@@ -7,7 +7,7 @@ const baseURL = savedBaseUrl
   ? savedBaseUrl.endsWith("/api/v1")
     ? savedBaseUrl
     : `${savedBaseUrl}/api/v1`
-  : "/api/v1";
+  : `${window.location.protocol}//${window.location.hostname}:8080/api/v1`;
 
 const api = axios.create({
   baseURL,

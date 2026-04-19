@@ -11,6 +11,7 @@ import (
 	"github.com/xiaoran/doutok/internal/pkg/logger"
 	"github.com/xiaoran/doutok/internal/pkg/response"
 	"github.com/xiaoran/doutok/internal/pkg/snowflake"
+	"github.com/xiaoran/doutok/internal/storage"
 	"github.com/xiaoran/doutok/internal/repository"
 )
 
@@ -155,47 +156,85 @@ type UploadVideoReq struct {
 
 func UploadVideo(c *gin.Context) {
 	userID := c.GetInt64("user_id")
-	var req UploadVideoReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ErrorWithMsg(c, 200, errno.ErrInvalidParam, err.Error())
-		return
+
+	// Support both JSON and multipart form
+	title := c.PostForm("title")
+	description := c.PostForm("description")
+	tags := c.PostForm("tags")
+
+	if title == "" {
+		// Try JSON body as fallback
+		var req UploadVideoReq
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.ErrorWithMsg(c, 200, errno.ErrInvalidParam, "title is required")
+			return
+		}
+		title = req.Title
+		description = req.Description
+		tags = req.Tags
 	}
 
-	visibility := req.Visibility
-	if visibility == 0 {
-		visibility = 1
+	// Handle file upload if present
+	var playURL, coverURL string
+	var fileSize int64
+
+	file, header, err := c.Request.FormFile("video")
+	if err == nil {
+		defer file.Close()
+		fileSize = header.Size
+
+		// Upload to MinIO
+		url, uploadErr := storage.Upload(c.Request.Context(), file, header.Size, header.Filename, header.Header.Get("Content-Type"))
+		if uploadErr != nil {
+			logger.Error("minio upload failed", "err", uploadErr)
+			response.ErrorWithMsg(c, 200, errno.ErrInternal, "File upload failed")
+			return
+		}
+		playURL = url
+		coverURL = "" // TODO: generate thumbnail
+
+		logger.Info("video uploaded to MinIO",
+			"filename", header.Filename,
+			"size", header.Size,
+			"url", url)
+	} else {
+		// No file - use URLs from form
+		playURL = c.PostForm("play_url")
+		coverURL = c.PostForm("cover_url")
+		if playURL == "" {
+			response.ErrorWithMsg(c, 200, errno.ErrInvalidParam, "Video file is required")
+			return
+		}
 	}
 
 	video := &model.Video{
 		ID:          snowflake.GenID(),
 		AuthorID:    userID,
-		Title:       req.Title,
-		Description: req.Description,
-		CoverURL:    req.CoverURL,
-		PlayURL:     req.PlayURL,
-		Duration:    req.Duration,
-		Width:       req.Width,
-		Height:      req.Height,
-		FileSize:    req.FileSize,
-		Status:      1, // 直接发布（学习版跳过审核）
-		Visibility:  visibility,
-		Tags:        req.Tags,
+		Title:       title,
+		Description: description,
+		CoverURL:    coverURL,
+		PlayURL:     playURL,
+		Duration:    0,
+		FileSize:    fileSize,
+		Status:      1,
+		Visibility:  1,
+		Tags:        tags,
 	}
 
 	if err := videoRepo.Create(c.Request.Context(), video); err != nil {
 		logger.Error("create video failed", "err", err)
-		response.ErrorWithMsg(c, 200, errno.ErrInternal, "发布失败")
+		response.ErrorWithMsg(c, 200, errno.ErrInternal, "Upload failed")
 		return
 	}
 
-	// 更新用户视频计数
 	userRepo.IncrCounter(c.Request.Context(), userID, "video_count", 1)
 
-	logger.Info("video published", "video_id", video.ID, "author_id", userID)
+	logger.Info("video published", "video_id", video.ID, "author_id", userID, "title", title)
 	response.Success(c, gin.H{
 		"video_id":  video.ID,
 		"play_url":  video.PlayURL,
 		"cover_url": video.CoverURL,
+		"title":     title,
 	})
 }
 
